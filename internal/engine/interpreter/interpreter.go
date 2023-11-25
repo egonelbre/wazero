@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/bits"
 	"sync"
+	"sync/atomic"
 	"unsafe"
 
 	"github.com/tetratelabs/wazero/api"
@@ -3910,20 +3911,47 @@ func WasmCompatMin32bits(v1, v2 uint32) uint64 {
 	)))
 }
 
+var nan32_index uint32
+
+func randnan32() uint32 {
+	index := atomic.AddUint32(&nan32_index, 16777619)
+	return (index & 0xffff) | 0x7ff80001
+}
+
+func isnan32(v uint32) bool {
+	return v&0x7F800000 == 0x7F800000 && (v&0x7FFFFF != 0)
+}
+
 func addFloat32bits(v1, v2 uint32) uint64 {
-	return uint64(math.Float32bits(math.Float32frombits(v1) + math.Float32frombits(v2)))
+	r := math.Float32bits(math.Float32frombits(v1) + math.Float32frombits(v2))
+	if randomizeNaN && isnan32(r) {
+		r = randnan32()
+	}
+	return uint64(r)
 }
 
 func subFloat32bits(v1, v2 uint32) uint64 {
-	return uint64(math.Float32bits(math.Float32frombits(v1) - math.Float32frombits(v2)))
+	r := math.Float32bits(math.Float32frombits(v1) - math.Float32frombits(v2))
+	if randomizeNaN && isnan32(r) {
+		r = randnan32()
+	}
+	return uint64(r)
 }
 
 func mulFloat32bits(v1, v2 uint32) uint64 {
-	return uint64(math.Float32bits(math.Float32frombits(v1) * math.Float32frombits(v2)))
+	r := math.Float32bits(math.Float32frombits(v1) * math.Float32frombits(v2))
+	if randomizeNaN && isnan32(r) {
+		r = randnan32()
+	}
+	return uint64(r)
 }
 
 func divFloat32bits(v1, v2 uint32) uint64 {
-	return uint64(math.Float32bits(math.Float32frombits(v1) / math.Float32frombits(v2)))
+	r := math.Float32bits(math.Float32frombits(v1) / math.Float32frombits(v2))
+	if randomizeNaN && isnan32(r) {
+		r = randnan32()
+	}
+	return uint64(r)
 }
 
 // https://www.w3.org/TR/2022/WD-wasm-core-2-20220419/exec/numerics.html#xref-exec-numerics-op-flt-mathrm-flt-n-z-1-z-2
